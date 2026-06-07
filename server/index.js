@@ -10,6 +10,7 @@ app.use('/uploads', express.static('uploads'));
 
 // Routes
 app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/docs', require('./routes/docRoutes'));
 
 app.get('/', (req, res) => res.json({ message: 'DocSign API running' }));
 
