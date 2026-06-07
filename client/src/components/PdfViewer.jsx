@@ -8,9 +8,21 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url
 ).toString();
 
-export default function PdfViewer({ fileUrl }) {
+const PDF_WIDTH = 600;
+
+export default function PdfViewer({ fileUrl, signatures = [], onPageClick, currentPage }) {
   const [numPages, setNumPages] = useState(null);
-  const [pageNumber, setPageNumber] = useState(1);
+  const [pageNumber, setPageNumber] = useState(currentPage || 1);
+
+  const handlePageClick = (e) => {
+    if (!onPageClick) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    onPageClick({ x, y, page: pageNumber });
+  };
+
+  const pageSignatures = signatures.filter((s) => s.page === pageNumber);
 
   return (
     <div className="flex flex-col items-center gap-4">
@@ -20,12 +32,32 @@ export default function PdfViewer({ fileUrl }) {
         loading={<p className="text-gray-400 py-10">Loading PDF...</p>}
         error={<p className="text-red-500 py-10">Failed to load PDF.</p>}
       >
-        <Page
-          pageNumber={pageNumber}
-          width={600}
-          renderTextLayer={true}
-          renderAnnotationLayer={true}
-        />
+        <div className="relative" onClick={handlePageClick}
+          style={{ cursor: onPageClick ? 'crosshair' : 'default' }}
+        >
+          <Page
+            pageNumber={pageNumber}
+            width={PDF_WIDTH}
+            renderTextLayer={true}
+            renderAnnotationLayer={true}
+          />
+          {/* Signature placeholders overlay */}
+          {pageSignatures.map((sig) => (
+            <div
+              key={sig.id}
+              className="absolute border-2 border-indigo-500 bg-indigo-50/60 rounded flex items-center justify-center pointer-events-none"
+              style={{
+                left: `${sig.x}%`,
+                top: `${sig.y}%`,
+                width: `${sig.width}px`,
+                height: `${sig.height}px`,
+                transform: 'translate(-50%, -50%)',
+              }}
+            >
+              <span className="text-indigo-600 text-xs font-medium">✍ Signature</span>
+            </div>
+          ))}
+        </div>
       </Document>
 
       {numPages && (
