@@ -105,7 +105,13 @@ export default function Dashboard() {
                     <td className="px-6 py-4 text-gray-500">
                       {new Date(doc.created_at).toLocaleDateString()}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 flex gap-3">
+                      <button
+                        onClick={() => navigate(`/docs/${doc.id}`)}
+                        className="text-indigo-600 hover:text-indigo-800 text-xs font-medium"
+                      >
+                        View
+                      </button>
                       <button
                         onClick={() => handleDelete(doc.id)}
                         className="text-red-500 hover:text-red-700 text-xs font-medium"
