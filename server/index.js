@@ -8,7 +8,9 @@ app.use(cors({ origin: process.env.CLIENT_URL }));
 app.use(express.json());
 app.use('/uploads', express.static('uploads'));
 
-// Routes (will be added day by day)
+// Routes
+app.use('/api/auth', require('./routes/authRoutes'));
+
 app.get('/', (req, res) => res.json({ message: 'DocSign API running' }));
 
 const PORT = process.env.PORT || 5000;
