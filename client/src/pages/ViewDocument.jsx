@@ -43,16 +43,24 @@ export default function ViewDocument() {
     try {
       const res = await api.post('/api/signatures', {
         document_id: id,
-        x,
-        y,
-        page,
+        x, y, page,
         width: 200,
         height: 60,
       });
       setSignatures((prev) => [...prev, res.data]);
       setPlacingMode(false);
-    } catch (_) {} 
+    } catch (_) {}
     finally { setSaving(false); }
+  };
+
+  const handleDragEnd = async (sigId, { x, y }) => {
+    // Optimistic update
+    setSignatures((prev) =>
+      prev.map((s) => (s.id === sigId ? { ...s, x, y } : s))
+    );
+    try {
+      await api.put(`/api/signatures/${sigId}`, { x, y });
+    } catch (_) {}
   };
 
   const handleDeleteSignature = async (sigId) => {
@@ -96,6 +104,8 @@ export default function ViewDocument() {
             fileUrl={fileUrl}
             signatures={signatures}
             onPageClick={placingMode ? handlePageClick : null}
+            onDragEnd={handleDragEnd}
+            onDeleteSignature={handleDeleteSignature}
           />
         </div>
 
@@ -115,6 +125,7 @@ export default function ViewDocument() {
           {/* Signature Controls */}
           <div className="bg-white rounded-xl shadow p-5">
             <h3 className="font-semibold text-gray-700 mb-3">Signature Fields</h3>
+
             <button
               onClick={() => setPlacingMode((v) => !v)}
               disabled={saving}
@@ -127,12 +138,21 @@ export default function ViewDocument() {
               {placingMode ? '✕ Cancel Placement' : '+ Add Signature Field'}
             </button>
 
+            {signatures.length > 0 && (
+              <p className="text-gray-400 text-xs mt-3 text-center">
+                Drag fields to reposition them
+              </p>
+            )}
+
             {signatures.length === 0 ? (
               <p className="text-gray-400 text-xs mt-4 text-center">No signature fields yet</p>
             ) : (
-              <ul className="mt-4 space-y-2">
+              <ul className="mt-3 space-y-2">
                 {signatures.map((sig, i) => (
-                  <li key={sig.id} className="flex justify-between items-center text-sm bg-gray-50 px-3 py-2 rounded-lg">
+                  <li
+                    key={sig.id}
+                    className="flex justify-between items-center text-sm bg-gray-50 px-3 py-2 rounded-lg"
+                  >
                     <span className="text-gray-600">Field {i + 1} — Page {sig.page}</span>
                     <button
                       onClick={() => handleDeleteSignature(sig.id)}
@@ -144,6 +164,11 @@ export default function ViewDocument() {
                 ))}
               </ul>
             )}
+          </div>
+
+          {/* Hint */}
+          <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-xs text-blue-600">
+            💡 Place signature fields by clicking on the PDF, then drag them to the exact position.
           </div>
         </div>
       </main>
