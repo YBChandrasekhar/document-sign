@@ -5,6 +5,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import ViewDocument from './pages/ViewDocument';
+import PublicSign from './pages/PublicSign';
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
           <Route path="/docs/:id" element={
             <ProtectedRoute><ViewDocument /></ProtectedRoute>
           } />
+          <Route path="/sign/:token" element={<PublicSign />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import PdfViewer from '../components/PdfViewer';
+import ShareModal from '../components/ShareModal';
 
 const statusColors = {
   pending: 'bg-yellow-100 text-yellow-700',
@@ -20,6 +21,7 @@ export default function ViewDocument() {
   const [saving, setSaving] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
   const [finalizeMsg, setFinalizeMsg] = useState('');
+  const [showShare, setShowShare] = useState(false);
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -234,6 +236,13 @@ export default function ViewDocument() {
               </button>
             )}
 
+            <button
+              onClick={() => setShowShare(true)}
+              className="w-full py-2 border border-indigo-300 text-indigo-600 rounded-lg text-sm font-medium hover:bg-indigo-50"
+            >
+              Share for Signing
+            </button>
+
             {finalizeMsg && (
               <p className={`text-xs text-center ${
                 finalizeMsg.includes('success') ? 'text-green-600' : 'text-red-500'
@@ -257,6 +266,14 @@ export default function ViewDocument() {
           )}
         </div>
       </main>
+
+      {showShare && (
+        <ShareModal
+          docId={id}
+          docName={doc.original_name}
+          onClose={() => setShowShare(false)}
+        />
+      )}
     </div>
   );
 }
