@@ -1,0 +1,26 @@
+$kind: http-request
+method: POST
+url: '{{base_url}}/api/signatures'
+order: 1000
+headers:
+  - key: Authorization
+    value: 'Bearer {{token}}'
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "document_id": "{{doc_id}}",
+      "x": 25.5,
+      "y": 60.0,
+      "page": 1,
+      "width": 200,
+      "height": 60
+    }
+scripts:
+  - type: afterResponse
+    language: text/javascript
+    code: |-
+      const res = pm.response.json();
+      if (res.id) pm.collectionVariables.set('sig_id', res.id);
