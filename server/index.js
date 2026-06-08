@@ -8,6 +8,7 @@ const app = express();
 app.use(cors({ origin: process.env.CLIENT_URL }));
 app.use(express.json());
 app.use('/uploads', express.static('uploads'));
+app.use('/signed', express.static('signed'));
 
 // Request logger
 app.use((req, res, next) => {
@@ -26,6 +27,7 @@ app.get('/', (req, res) => res.json({
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/docs', require('./routes/docRoutes'));
 app.use('/api/signatures', require('./routes/signatureRoutes'));
+app.use('/api/docs', require('./routes/finalizeRoutes'));
 
 // 404 handler
 app.use((req, res) => res.status(404).json({ message: 'Route not found' }));
