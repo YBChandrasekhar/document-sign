@@ -6,6 +6,7 @@ const actionColors = {
   finalized: 'bg-green-100 text-green-700',
   signed:    'bg-purple-100 text-purple-700',
   shared:    'bg-yellow-100 text-yellow-700',
+  rejected:  'bg-red-100 text-red-700',
 };
 
 const actionLabels = {
@@ -13,6 +14,7 @@ const actionLabels = {
   finalized: 'Finalized',
   signed:    'Signed',
   shared:    'Shared',
+  rejected:  'Rejected',
 };
 
 export default function AuditTrail({ docId }) {
@@ -51,6 +53,9 @@ export default function AuditTrail({ docId }) {
           <p className="text-gray-600">{log.actor_name || log.actor_email}</p>
           {log.ip_address && (
             <p className="text-gray-400">IP: {log.ip_address}</p>
+          )}
+          {log.notes && (
+            <p className="text-red-400 mt-1">Reason: {log.notes}</p>
           )}
         </li>
       ))}

@@ -120,6 +120,7 @@ export default function ViewDocument() {
 
   const fileUrl = `${import.meta.env.VITE_API_URL}/${doc.file_path}`;
   const isSigned = doc.status === 'signed';
+  const isRejected = doc.status === 'rejected';
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -147,12 +148,20 @@ export default function ViewDocument() {
               This document has been signed
             </div>
           )}
+          {isRejected && (
+            <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-2 rounded-lg">
+              This document was rejected
+              {doc.rejection_reason && (
+                <span className="block text-xs mt-1">Reason: {doc.rejection_reason}</span>
+              )}
+            </div>
+          )}
           <PdfViewer
             fileUrl={fileUrl}
             signatures={signatures}
-            onPageClick={!isSigned && placingMode ? handlePageClick : null}
-            onDragEnd={!isSigned ? handleDragEnd : null}
-            onDeleteSignature={!isSigned ? handleDeleteSignature : null}
+            onPageClick={!isSigned && !isRejected && placingMode ? handlePageClick : null}
+            onDragEnd={!isSigned && !isRejected ? handleDragEnd : null}
+            onDeleteSignature={!isSigned && !isRejected ? handleDeleteSignature : null}
           />
         </div>
 
@@ -170,7 +179,7 @@ export default function ViewDocument() {
           </div>
 
           {/* Signature Controls */}
-          {!isSigned && (
+          {!isSigned && !isRejected && (
             <div className="bg-white rounded-xl shadow p-5">
               <h3 className="font-semibold text-gray-700 mb-3">Signature Fields</h3>
               <button
@@ -220,7 +229,7 @@ export default function ViewDocument() {
           <div className="bg-white rounded-xl shadow p-5 flex flex-col gap-3">
             <h3 className="font-semibold text-gray-700">Actions</h3>
 
-            {!isSigned ? (
+            {!isSigned && !isRejected ? (
               <button
                 onClick={handleFinalize}
                 disabled={finalizing || signatures.length === 0}
@@ -228,13 +237,15 @@ export default function ViewDocument() {
               >
                 {finalizing ? 'Generating PDF...' : 'Finalize and Sign'}
               </button>
-            ) : (
+            ) : isSigned ? (
               <button
                 onClick={handleDownload}
                 className="w-full py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700"
               >
                 Download Signed PDF
               </button>
+            ) : (
+              <p className="text-red-500 text-xs text-center">This document was rejected</p>
             )}
 
             <button
@@ -252,7 +263,7 @@ export default function ViewDocument() {
               </p>
             )}
 
-            {signatures.length === 0 && !isSigned && (
+            {signatures.length === 0 && !isSigned && !isRejected && (
               <p className="text-xs text-gray-400 text-center">
                 Add at least 1 signature field to finalize
               </p>
@@ -260,7 +271,7 @@ export default function ViewDocument() {
           </div>
 
           {/* Hint */}
-          {!isSigned && (
+          {!isSigned && !isRejected && (
             <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-xs text-blue-600">
               Place signature fields, drag to position, then click Finalize and Sign
             </div>

@@ -7,6 +7,8 @@ export default function PublicSign() {
   const { token } = useParams();
   const [data, setData] = useState(null);
   const [signerName, setSignerName] = useState('');
+  const [action, setAction] = useState('signed'); // 'signed' | 'rejected'
+  const [rejectionReason, setRejectionReason] = useState('');
   const [loading, setLoading] = useState(true);
   const [signing, setSigning] = useState(false);
   const [signed, setSigned] = useState(false);
@@ -31,17 +33,19 @@ export default function PublicSign() {
   const handleSign = async () => {
     if (!signerName.trim())
       return setError('Please enter your full name to sign');
+    if (action === 'rejected' && !rejectionReason.trim())
+      return setError('Please provide a reason for rejection');
 
     setSigning(true);
     setError('');
     try {
       await axios.post(
         `${import.meta.env.VITE_API_URL}/api/share/token/${token}/sign`,
-        { signer_name: signerName }
+        { signer_name: signerName, action, rejection_reason: rejectionReason }
       );
-      setSigned(true);
+      setSigned(action);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to sign document');
+      setError(err.response?.data?.message || 'Failed to process document');
     } finally {
       setSigning(false);
     }
@@ -64,13 +68,25 @@ export default function PublicSign() {
       </div>
     );
 
-  if (signed)
+  if (signed === 'signed')
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-3">
         <div className="bg-green-50 border border-green-200 rounded-xl px-8 py-6 text-center">
           <p className="text-green-600 font-semibold text-xl">Document Signed!</p>
           <p className="text-green-500 text-sm mt-2">
             Thank you, <strong>{signerName}</strong>. Your signature has been recorded.
+          </p>
+        </div>
+      </div>
+    );
+
+  if (signed === 'rejected')
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3">
+        <div className="bg-red-50 border border-red-200 rounded-xl px-8 py-6 text-center">
+          <p className="text-red-600 font-semibold text-xl">Document Rejected</p>
+          <p className="text-red-500 text-sm mt-2">
+            You have rejected this document. The sender has been notified.
           </p>
         </div>
       </div>
@@ -114,13 +130,56 @@ export default function PublicSign() {
               onChange={(e) => setSignerName(e.target.value)}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
             />
+
+            {/* Action toggle */}
+            <div className="flex gap-2">
+              <button
+                onClick={() => setAction('signed')}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition ${
+                  action === 'signed'
+                    ? 'bg-green-600 text-white border-green-600'
+                    : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                Accept
+              </button>
+              <button
+                onClick={() => setAction('rejected')}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition ${
+                  action === 'rejected'
+                    ? 'bg-red-600 text-white border-red-600'
+                    : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                Reject
+              </button>
+            </div>
+
+            {action === 'rejected' && (
+              <textarea
+                placeholder="Reason for rejection (required)"
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                rows={3}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 resize-none"
+              />
+            )}
+
             {error && <p className="text-red-500 text-xs">{error}</p>}
             <button
               onClick={handleSign}
               disabled={signing || !signerName.trim()}
-              className="w-full py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50"
+              className={`w-full py-2 text-white rounded-lg text-sm font-medium disabled:opacity-50 ${
+                action === 'rejected'
+                  ? 'bg-red-600 hover:bg-red-700'
+                  : 'bg-green-600 hover:bg-green-700'
+              }`}
             >
-              {signing ? 'Signing...' : 'Sign Document'}
+              {signing
+                ? 'Processing...'
+                : action === 'rejected'
+                ? 'Reject Document'
+                : 'Sign Document'}
             </button>
           </div>
 
