@@ -1,0 +1,176 @@
+{
+  "info": {
+    "name": "DocSign API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:5000" },
+    { "key": "token", "value": "" },
+    { "key": "doc_id", "value": "" },
+    { "key": "sig_id", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/",
+        "description": "Check if the API is running"
+      }
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/auth/register",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.token) pm.collectionVariables.set('token', res.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/auth/login",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Documents",
+      "item": [
+        {
+          "name": "Upload PDF",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.id) pm.collectionVariables.set('doc_id', res.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/docs/upload",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "body": {
+              "mode": "formdata",
+              "formdata": [{ "key": "document", "type": "file", "src": "" }]
+            }
+          }
+        },
+        {
+          "name": "Get All Documents",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/docs",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        },
+        {
+          "name": "Get Single Document",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/docs/{{doc_id}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        },
+        {
+          "name": "Delete Document",
+          "request": {
+            "method": "DELETE",
+            "url": "{{base_url}}/api/docs/{{doc_id}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Signatures",
+      "item": [
+        {
+          "name": "Create Signature",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.id) pm.collectionVariables.set('sig_id', res.id);"
+                ]
+              }
+        }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/api/signatures",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"document_id\": \"{{doc_id}}\",\n  \"x\": 25.5,\n  \"y\": 60.0,\n  \"page\": 1,\n  \"width\": 200,\n  \"height\": 60\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Signatures for Document",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/signatures/{{doc_id}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        },
+        {
+          "name": "Update Signature Position",
+          "request": {
+            "method": "PUT",
+            "url": "{{base_url}}/api/signatures/{{sig_id}}",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"x\": 30.0,\n  \"y\": 70.0\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Signature",
+          "request": {
+            "method": "DELETE",
+            "url": "{{base_url}}/api/signatures/{{sig_id}}",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }]
+          }
+        }
+      ]
+    }
+  ]
+}

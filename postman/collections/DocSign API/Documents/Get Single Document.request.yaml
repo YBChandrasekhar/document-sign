@@ -1,0 +1,7 @@
+$kind: http-request
+method: GET
+url: '{{base_url}}/api/docs/{{doc_id}}'
+order: 3000
+headers:
+  - key: Authorization
+    value: 'Bearer {{token}}'

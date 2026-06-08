@@ -1,0 +1,7 @@
+# Use this workspace to collaborate
+workspace:
+  id: 0ee1c041-c175-4ac4-8656-b54623e95a10
+
+localResources:
+  collections:
+    - ..\DocSign.postman_collection.json
