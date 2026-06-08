@@ -1,5 +1,6 @@
 const supabase = require('../config/db');
 const fs = require('fs');
+const { addAuditLog } = require('./auditController');
 
 const uploadDoc = async (req, res) => {
   if (!req.file)
@@ -24,6 +25,9 @@ const uploadDoc = async (req, res) => {
     fs.unlinkSync(req.file.path);
     return res.status(500).json({ message: error.message });
   }
+
+  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+  await addAuditLog(doc.id, 'uploaded', req.user.name, req.user.email, ip);
 
   res.status(201).json(doc);
 };

@@ -29,6 +29,7 @@ app.use('/api/docs', require('./routes/docRoutes'));
 app.use('/api/signatures', require('./routes/signatureRoutes'));
 app.use('/api/docs', require('./routes/finalizeRoutes'));
 app.use('/api/share', require('./routes/shareRoutes'));
+app.use('/api/audit', require('./routes/auditRoutes'));
 
 // 404 handler
 app.use((req, res) => res.status(404).json({ message: 'Route not found' }));
