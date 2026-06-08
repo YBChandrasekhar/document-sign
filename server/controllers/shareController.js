@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const supabase = require('../config/db');
+const { addAuditLog } = require('./auditController');
 
 const generateSignLink = async (req, res) => {
   const { document_id, signer_email } = req.body;
@@ -86,6 +87,9 @@ const generateSignLink = async (req, res) => {
     signing_link: signingLink,
     expires_at: expiresAt,
   });
+
+  const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+  await addAuditLog(document_id, 'shared', req.user.name, req.user.email, ip);
 };
 
 const getDocByToken = async (req, res) => {

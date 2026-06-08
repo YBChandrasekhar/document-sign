@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import PdfViewer from '../components/PdfViewer';
 import ShareModal from '../components/ShareModal';
+import AuditTrail from '../components/AuditTrail';
 
 const statusColors = {
   pending: 'bg-yellow-100 text-yellow-700',
@@ -264,6 +265,12 @@ export default function ViewDocument() {
               Place signature fields, drag to position, then click Finalize and Sign
             </div>
           )}
+
+          {/* Audit Trail */}
+          <div className="bg-white rounded-xl shadow p-5">
+            <h3 className="font-semibold text-gray-700 mb-3">Audit Trail</h3>
+            <AuditTrail docId={id} />
+          </div>
         </div>
       </main>
 

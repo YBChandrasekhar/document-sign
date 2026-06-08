@@ -2,6 +2,7 @@ const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
 const fs = require('fs');
 const path = require('path');
 const supabase = require('../config/db');
+const { addAuditLog } = require('./auditController');
 
 const finalizeDoc = async (req, res) => {
   const { id } = req.params;
@@ -117,6 +118,9 @@ const finalizeDoc = async (req, res) => {
       message: 'Document signed successfully',
       signed_path: signedPath.replace(/\\/g, '/'),
     });
+
+    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    await addAuditLog(id, 'finalized', req.user.name, req.user.email, ip);
 
   } catch (err) {
     console.error('PDF finalize error:', err);
