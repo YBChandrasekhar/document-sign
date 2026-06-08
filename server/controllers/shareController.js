@@ -107,8 +107,8 @@ const getDocByToken = async (req, res) => {
   if (new Date(signingToken.expires_at) < new Date())
     return res.status(400).json({ message: 'This signing link has expired' });
 
-  if (signingToken.status === 'signed')
-    return res.status(400).json({ message: 'Document already signed' });
+  if (['signed', 'rejected'].includes(signingToken.status))
+    return res.status(400).json({ message: `Document already ${signingToken.status}` });
 
   res.json({
     document: signingToken.documents,
@@ -119,7 +119,10 @@ const getDocByToken = async (req, res) => {
 
 const signByToken = async (req, res) => {
   const { token } = req.params;
-  const { signer_name } = req.body;
+  const { signer_name, action, rejection_reason } = req.body;
+
+  if (!action || !['signed', 'rejected'].includes(action))
+    return res.status(400).json({ message: 'action must be "signed" or "rejected"' });
 
   const { data: signingToken, error } = await supabase
     .from('signing_tokens')
@@ -133,33 +136,40 @@ const signByToken = async (req, res) => {
   if (new Date(signingToken.expires_at) < new Date())
     return res.status(400).json({ message: 'This signing link has expired' });
 
-  if (signingToken.status === 'signed')
-    return res.status(400).json({ message: 'Document already signed' });
+  if (['signed', 'rejected'].includes(signingToken.status))
+    return res.status(400).json({ message: `Document already ${signingToken.status}` });
 
   const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
 
   // Update token status
   await supabase
     .from('signing_tokens')
-    .update({ status: 'signed' })
+    .update({
+      status: action,
+      ...(action === 'rejected' && rejection_reason ? { rejection_reason } : {}),
+    })
     .eq('token', token);
 
   // Update document status
   await supabase
     .from('documents')
-    .update({ status: 'signed' })
+    .update({
+      status: action,
+      ...(action === 'rejected' && rejection_reason ? { rejection_reason } : {}),
+    })
     .eq('id', signingToken.document_id);
 
   // Log audit entry
   await supabase.from('audit_logs').insert({
     document_id: signingToken.document_id,
-    action: 'signed',
+    action,
     actor_email: signingToken.signer_email,
     actor_name: signer_name || signingToken.signer_email,
     ip_address: ip,
+    ...(action === 'rejected' && rejection_reason ? { notes: rejection_reason } : {}),
   });
 
-  res.json({ message: 'Document signed successfully' });
+  res.json({ message: `Document ${action} successfully` });
 };
 
 module.exports = { generateSignLink, getDocByToken, signByToken };
