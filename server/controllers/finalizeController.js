@@ -1,4 +1,5 @@
 const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
+const fontkit = require('@pdf-lib/fontkit');
 const fs = require('fs');
 const path = require('path');
 const supabase = require('../config/db');
@@ -7,7 +8,6 @@ const { addAuditLog } = require('./auditController');
 const finalizeDoc = async (req, res) => {
   const { id } = req.params;
 
-  // Get document
   const { data: doc, error: docError } = await supabase
     .from('documents')
     .select('*')
@@ -18,7 +18,6 @@ const finalizeDoc = async (req, res) => {
   if (docError || !doc)
     return res.status(404).json({ message: 'Document not found' });
 
-  // Get signatures
   const { data: signatures, error: sigError } = await supabase
     .from('signatures')
     .select('*')
@@ -32,71 +31,131 @@ const finalizeDoc = async (req, res) => {
     return res.status(400).json({ message: 'No signature fields found on this document' });
 
   try {
-    // Load the original PDF
     const pdfBytes = fs.readFileSync(doc.file_path);
-    const pdfDoc = await PDFDocument.load(pdfBytes);
-    const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const pdfDoc   = await PDFDocument.load(pdfBytes);
+    pdfDoc.registerFontkit(fontkit);
+
+    // Embed custom cursive font + standard fonts
+    const cursiveFontBytes = fs.readFileSync(path.join(__dirname, '../fonts/DancingScript-Bold.ttf'));
+    const fontCursive = await pdfDoc.embedFont(cursiveFontBytes);
+    const fontBold    = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const fontNormal  = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const pages = pdfDoc.getPages();
 
-    // Embed each signature onto the correct page
+    const safeName   = req.user.name.replace(/[^\x00-\x7F]/g, '');
+    const safeEmail  = req.user.email.replace(/[^\x00-\x7F]/g, '');
+    const signedDate = new Date().toLocaleDateString('en-US', {
+      year: 'numeric', month: 'short', day: 'numeric',
+    });
+    const signedTime = new Date().toLocaleTimeString('en-US', {
+      hour: '2-digit', minute: '2-digit',
+    });
+
+    // Stamp colors — deep navy/indigo
+    const stampColor  = rgb(0.10, 0.15, 0.55);  // deep navy border & text
+    const stampFill   = rgb(0.97, 0.97, 1.00);  // near-white fill
+    const grayMeta    = rgb(0.35, 0.35, 0.35);  // date & email
+    const white       = rgb(1, 1, 1);
+
+    // Stamp dimensions
+    const stampW  = 220;
+    const stampH  = 110;
+    const radius  = 6;
+    const centerX = (sig) => (sig.x / 100);
+
     for (const sig of signatures) {
       const pageIndex = (sig.page || 1) - 1;
       const page = pages[pageIndex];
       if (!page) continue;
 
-      const { width, height } = page.getSize();
+      const { width: pageWidth, height: pageHeight } = page.getSize();
+      const x = (sig.x / 100) * pageWidth;
+      const y = pageHeight - (sig.y / 100) * pageHeight - stampH;
 
-      // Convert percentage coordinates to PDF coordinates
-      // PDF y-axis is from bottom, so we flip it
-      const x = (sig.x / 100) * width;
-      const y = height - (sig.y / 100) * height - (sig.height || 60);
-
-      const boxWidth = sig.width || 200;
-      const boxHeight = sig.height || 60;
-
-      // Draw signature box border
+      // ── STAMP OUTER BORDER (double ring effect) ──
+      // Outer ring
       page.drawRectangle({
-        x,
-        y,
-        width: boxWidth,
-        height: boxHeight,
-        borderColor: rgb(0.24, 0.32, 0.87),
-        borderWidth: 1.5,
-        color: rgb(0.94, 0.96, 1),
-        opacity: 0.6,
+        x: x - 3, y: y - 3,
+        width: stampW + 6, height: stampH + 6,
+        borderColor: rgb(0.10, 0.15, 0.55),
+        borderWidth: 0.5,
+        color: rgb(1,1,1),
+        opacity: 0,
+      });
+      // Main stamp box
+      page.drawRectangle({
+        x, y,
+        width: stampW, height: stampH,
+        color: stampFill,
+        borderColor: stampColor,
+        borderWidth: 2,
+      });
+      // Inner border line (double border effect)
+      page.drawRectangle({
+        x: x + 4, y: y + 4,
+        width: stampW - 8, height: stampH - 8,
+        borderColor: stampColor,
+        borderWidth: 0.5,
+        opacity: 0,
       });
 
-      // Draw signature name
-      const safeName = req.user.name.replace(/[^\x00-\x7F]/g, '');
-      page.drawText(`Signed by: ${safeName}`, {
-        x: x + 8,
-        y: y + boxHeight - 20,
-        size: 11,
-        font,
-        color: rgb(0.24, 0.32, 0.87),
+      // ── TOP LABEL: "SIGNED BY" ──
+      page.drawRectangle({
+        x, y: y + stampH - 22,
+        width: stampW, height: 22,
+        color: stampColor,
+      });
+      page.drawText('SIGNED BY', {
+        x: x + stampW / 2 - 28,
+        y: y + stampH - 15,
+        size: 9,
+        font: fontBold,
+        color: white,
+        opacity: 1,
       });
 
-      // Draw signed date
-      const signedDate = new Date().toLocaleDateString('en-US', {
-        year: 'numeric', month: 'short', day: 'numeric',
+      // ── CURSIVE SIGNATURE NAME ──
+      page.drawText(safeName, {
+        x: x + 10,
+        y: y + stampH - 50,
+        size: 26,
+        font: fontCursive,
+        color: stampColor,
       });
 
-      page.drawText(`Signed: ${signedDate}`, {
-        x: x + 8,
-        y: y + 8,
+      // ── DIVIDER ──
+      page.drawLine({
+        start: { x: x + 8,          y: y + stampH - 58 },
+        end:   { x: x + stampW - 8, y: y + stampH - 58 },
+        thickness: 0.8,
+        color: stampColor,
+        opacity: 0.4,
+      });
+
+      // ── DATE STAMP ──
+      page.drawText(`Date: ${signedDate}  ${signedTime}`, {
+        x: x + 10,
+        y: y + stampH - 74,
         size: 8,
-        font,
-        color: rgb(0.4, 0.4, 0.4),
+        font: fontBold,
+        color: grayMeta,
+      });
+
+      // ── EMAIL ──
+      page.drawText(safeEmail, {
+        x: x + 10,
+        y: y + stampH - 88,
+        size: 7.5,
+        font: fontNormal,
+        color: grayMeta,
       });
     }
 
-    // Save signed PDF
-    const signedBytes = await pdfDoc.save();
+    const signedBytes    = await pdfDoc.save();
     const signedFilename = `signed-${Date.now()}-${path.basename(doc.name)}`;
-    const signedPath = path.join('signed', signedFilename);
+    const signedPath     = path.join('signed', signedFilename);
     fs.writeFileSync(signedPath, signedBytes);
 
-    // Update document status and signed path in Supabase
     const { error: updateError } = await supabase
       .from('documents')
       .update({
@@ -108,7 +167,6 @@ const finalizeDoc = async (req, res) => {
     if (updateError)
       return res.status(500).json({ message: updateError.message });
 
-    // Update all signatures status to signed
     await supabase
       .from('signatures')
       .update({ status: 'signed' })

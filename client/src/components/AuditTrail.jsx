@@ -39,7 +39,7 @@ export default function AuditTrail({ docId }) {
     return <p className="text-gray-400 text-xs text-center py-2">No activity yet</p>;
 
   return (
-    <ul className="space-y-2 max-h-48 overflow-y-auto">
+    <ul className="space-y-2 max-h-48 overflow-y-auto scrollbar-thin">
       {logs.map((log) => (
         <li key={log.id} className="bg-gray-50 rounded-lg px-3 py-2 text-xs">
           <div className="flex justify-between items-center mb-1">
