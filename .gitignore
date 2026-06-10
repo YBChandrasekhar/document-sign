@@ -1,5 +1,14 @@
 node_modules/
 .env
 .env.local
-uploads/
 dist/
+
+# uploaded and signed PDFs — don't commit real files
+server/uploads/*
+server/signed/*
+
+# keep folder structure
+!server/uploads/.gitkeep
+!server/signed/.gitkeep
+
+# fonts are committed (needed for PDF generation)
