@@ -18,6 +18,7 @@ export default function PdfViewer({
   onPageClick,
   onDragEnd,
   onDeleteSignature,
+  userName,
 }) {
   const [numPages, setNumPages] = useState(null);
   const [pageNumber, setPageNumber] = useState(1);
@@ -84,6 +85,7 @@ export default function PdfViewer({
                 sig={sig}
                 index={i}
                 onDelete={onDeleteSignature}
+                userName={userName}
               />
             ))}
           </div>

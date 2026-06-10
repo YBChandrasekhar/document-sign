@@ -4,6 +4,7 @@ import api from '../api/axios';
 import PdfViewer from '../components/PdfViewer';
 import ShareModal from '../components/ShareModal';
 import AuditTrail from '../components/AuditTrail';
+import { useAuth } from '../context/AuthContext';
 
 const statusColors = {
   pending: 'bg-yellow-100 text-yellow-700',
@@ -14,6 +15,7 @@ const statusColors = {
 export default function ViewDocument() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [doc, setDoc] = useState(null);
   const [signatures, setSignatures] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -162,6 +164,7 @@ export default function ViewDocument() {
             onPageClick={!isSigned && !isRejected && placingMode ? handlePageClick : null}
             onDragEnd={!isSigned && !isRejected ? handleDragEnd : null}
             onDeleteSignature={!isSigned && !isRejected ? handleDeleteSignature : null}
+            userName={user?.name}
           />
         </div>
 

@@ -1,5 +1,9 @@
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
+const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
+const fontkit = require('@pdf-lib/fontkit');
+const fs = require('fs');
+const path = require('path');
 const supabase = require('../config/db');
 const { addAuditLog } = require('./auditController');
 
@@ -149,6 +153,75 @@ const signByToken = async (req, res) => {
       ...(action === 'rejected' && rejection_reason ? { rejection_reason } : {}),
     })
     .eq('token', token);
+
+  // If signed, generate stamped PDF
+  if (action === 'signed') {
+    try {
+      const doc = signingToken.documents;
+      const { data: signatures } = await supabase
+        .from('signatures')
+        .select('*')
+        .eq('document_id', signingToken.document_id);
+
+      if (signatures && signatures.length > 0) {
+        const pdfBytes = fs.readFileSync(doc.file_path);
+        const pdfDoc = await PDFDocument.load(pdfBytes);
+        pdfDoc.registerFontkit(fontkit);
+
+        const cursiveFontBytes = fs.readFileSync(path.join(__dirname, '../fonts/DancingScript-Bold.ttf'));
+        const fontCursive = await pdfDoc.embedFont(cursiveFontBytes);
+        const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+        const fontNormal = await pdfDoc.embedFont(StandardFonts.Helvetica);
+        const pages = pdfDoc.getPages();
+
+        const safeName = (signer_name || signingToken.signer_email).replace(/[^\x00-\x7F]/g, '');
+        const safeEmail = signingToken.signer_email.replace(/[^\x00-\x7F]/g, '');
+        const signedDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+        const signedTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
+        const stampColor = rgb(0.10, 0.15, 0.55);
+        const stampFill = rgb(0.97, 0.97, 1.00);
+        const grayMeta = rgb(0.35, 0.35, 0.35);
+        const white = rgb(1, 1, 1);
+        const stampW = 220;
+        const stampH = 110;
+
+        for (const sig of signatures) {
+          const page = pages[(sig.page || 1) - 1];
+          if (!page) continue;
+          const { width: pageWidth, height: pageHeight } = page.getSize();
+          const x = (sig.x / 100) * pageWidth;
+          const y = pageHeight - (sig.y / 100) * pageHeight - stampH;
+
+          page.drawRectangle({ x: x - 3, y: y - 3, width: stampW + 6, height: stampH + 6, borderColor: rgb(0.10, 0.15, 0.55), borderWidth: 0.5, color: rgb(1,1,1), opacity: 0 });
+          page.drawRectangle({ x, y, width: stampW, height: stampH, color: stampFill, borderColor: stampColor, borderWidth: 2 });
+          page.drawRectangle({ x: x + 4, y: y + 4, width: stampW - 8, height: stampH - 8, borderColor: stampColor, borderWidth: 0.5, opacity: 0 });
+          page.drawRectangle({ x, y: y + stampH - 22, width: stampW, height: 22, color: stampColor });
+          page.drawText('SIGNED BY', { x: x + stampW / 2 - 28, y: y + stampH - 15, size: 9, font: fontBold, color: white });
+          page.drawText(safeName, { x: x + 10, y: y + stampH - 50, size: 26, font: fontCursive, color: stampColor });
+          page.drawLine({ start: { x: x + 8, y: y + stampH - 58 }, end: { x: x + stampW - 8, y: y + stampH - 58 }, thickness: 0.8, color: stampColor, opacity: 0.4 });
+          page.drawText(`Date: ${signedDate}  ${signedTime}`, { x: x + 10, y: y + stampH - 74, size: 8, font: fontBold, color: grayMeta });
+          page.drawText(safeEmail, { x: x + 10, y: y + stampH - 88, size: 7.5, font: fontNormal, color: grayMeta });
+        }
+
+        const signedBytes = await pdfDoc.save();
+        const signedFilename = `signed-${Date.now()}-${path.basename(doc.name)}`;
+        const signedPath = path.join('signed', signedFilename);
+        fs.writeFileSync(signedPath, signedBytes);
+
+        await supabase
+          .from('documents')
+          .update({ status: 'signed', signed_path: signedPath.replace(/\\/g, '/') })
+          .eq('id', signingToken.document_id);
+
+        await supabase.from('signatures').update({ status: 'signed' }).eq('document_id', signingToken.document_id);
+
+        return res.json({ message: 'Document signed successfully' });
+      }
+    } catch (err) {
+      console.error('PDF stamp error (public sign):', err);
+    }
+  }
 
   // Update document status
   await supabase
